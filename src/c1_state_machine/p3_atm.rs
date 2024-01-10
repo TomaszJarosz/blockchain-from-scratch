@@ -65,43 +65,8 @@ impl StateMachine for Atm {
             },
             Action::PressKey(key) => {
                 match starting_state.expected_pin_hash {
-                    Auth::Authenticating(expected_pin_hash) => {
-                        match key {
-                            Key::One | Key::Two | Key::Three | Key::Four => {
-                                let mut new_state = starting_state.clone();
-                                new_state.keystroke_register.push(key.clone());
-                                new_state
-                            }
-                            Key::Enter => {
-                                let entered_pin_hash = crate::hash(&starting_state.keystroke_register);
-                                if expected_pin_hash == entered_pin_hash {
-                                    Atm {
-                                        expected_pin_hash: Auth::Authenticated,
-                                        keystroke_register: vec![],
-                                        ..starting_state.clone()
-                                    }
-                                } else {
-                                    Atm {
-                                        expected_pin_hash: Auth::Waiting,
-                                        keystroke_register: vec![],
-                                        ..starting_state.clone()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Auth::Authenticated => {
-                        match key {
-                            Key::One | Key::Two | Key::Three | Key::Four => {
-                                let mut new_state = starting_state.clone();
-                                new_state.keystroke_register.push(key.clone());
-                                new_state
-                            }
-                            Key::Enter => {
-                                starting_state.clone() // todo withdraw
-                            }
-                        }
-                    }
+                    Auth::Authenticating(expected_pin_hash) => handle_authenticating(starting_state, key, expected_pin_hash),
+                    Auth::Authenticated => handle_authenticated(&starting_state, key),
                     Auth::Waiting => {
                         starting_state.clone()
                     }
@@ -109,6 +74,90 @@ impl StateMachine for Atm {
             }
         }
     }
+}
+
+fn handle_authenticated(starting_state: &Atm, key: &Key) -> Atm {
+    match key {
+        Key::One | Key::Two | Key::Three | Key::Four => {
+            let mut new_state = starting_state.clone();
+            new_state.keystroke_register.push(key.clone());
+            new_state
+        }
+        Key::Enter => {
+            let keystroke_register = &starting_state.keystroke_register;
+            let requested_amount = calculate_requested_amount(keystroke_register);
+            return if requested_amount > starting_state.cash_inside {
+                Atm {
+                    expected_pin_hash: Auth::Waiting,
+                    keystroke_register: Vec::new(),
+                    ..starting_state.clone()
+                }
+            } else {
+                Atm {
+                    expected_pin_hash: Auth::Waiting,
+                    keystroke_register: Vec::new(),
+                    cash_inside: starting_state.cash_inside - requested_amount,
+                    ..starting_state.clone()
+                }
+            };
+        }
+    }
+}
+
+fn calculate_requested_amount(keystroke_register: &Vec<Key>) -> u64 {
+    let mut requested_amount = 0;
+    for (index, digit) in keystroke_register.iter().enumerate() {
+        match digit {
+            Key::One => {
+                requested_amount += calc_number(1, index);
+            }
+            Key::Two => {
+                requested_amount += calc_number(2, index);
+            }
+            Key::Three => {
+                requested_amount += calc_number(3, index);
+            }
+            Key::Four => {
+                requested_amount += calc_number(4, index);
+            }
+            Key::Enter => {}
+        }
+    }
+    requested_amount
+}
+
+fn handle_authenticating(starting_state: &Atm, key: &Key, expected_pin_hash: u64) -> Atm {
+    match key {
+        Key::One | Key::Two | Key::Three | Key::Four => {
+            let mut new_state = starting_state.clone();
+            new_state.keystroke_register.push(key.clone());
+            new_state
+        }
+        Key::Enter => {
+            let entered_pin_hash = crate::hash(&starting_state.keystroke_register);
+            if expected_pin_hash == entered_pin_hash {
+                Atm {
+                    expected_pin_hash: Auth::Authenticated,
+                    keystroke_register: vec![],
+                    ..starting_state.clone()
+                }
+            } else {
+                Atm {
+                    expected_pin_hash: Auth::Waiting,
+                    keystroke_register: vec![],
+                    ..starting_state.clone()
+                }
+            }
+        }
+    }
+}
+
+fn calc_number(digit: u64, digit_power: usize) -> u64 {
+    let mut number = digit;
+    for _ in 0..digit_power {
+        number += digit * 10;
+    }
+    return number;
 }
 
 
