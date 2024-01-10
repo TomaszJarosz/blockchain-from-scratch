@@ -64,50 +64,46 @@ impl StateMachine for Atm {
                 ..starting_state.clone()
             },
             Action::PressKey(key) => {
-                let mut new_state = starting_state.clone();
-                // match key {
-                //     Key::One | Key::Two | Key::Three | Key::Four => {
-                //         let mut new_state = starting_state.clone();
-                //         new_state.keystroke_register.push(key.into());
-                //      check pin
-                // return Atm {};
-                // }
-                // Key::Enter => {}
-                // }
-                match new_state.expected_pin_hash {
+                match starting_state.expected_pin_hash {
                     Auth::Authenticating(expected_pin_hash) => {
                         match key {
                             Key::One | Key::Two | Key::Three | Key::Four => {
+                                let mut new_state = starting_state.clone();
                                 new_state.keystroke_register.push(key.clone());
                                 new_state
                             }
                             Key::Enter => {
-                                let entered_pin_hash = crate::hash(&new_state.keystroke_register);
+                                let entered_pin_hash = crate::hash(&starting_state.keystroke_register);
                                 if expected_pin_hash == entered_pin_hash {
                                     Atm {
                                         expected_pin_hash: Auth::Authenticated,
                                         keystroke_register: vec![],
-                                        ..new_state
+                                        ..starting_state.clone()
                                     }
                                 } else {
                                     Atm {
                                         expected_pin_hash: Auth::Waiting,
                                         keystroke_register: vec![],
-                                        ..new_state
+                                        ..starting_state.clone()
                                     }
                                 }
                             }
                         }
                     }
                     Auth::Authenticated => {
-                        Atm {
-                            ..new_state //todo
+                        match key {
+                            Key::One | Key::Two | Key::Three | Key::Four => {
+                                let mut new_state = starting_state.clone();
+                                new_state.keystroke_register.push(key.clone());
+                                new_state
+                            }
+                            Key::Enter => {
+                                starting_state.clone() // todo withdraw
+                            }
                         }
                     }
                     Auth::Waiting => {
-                        Atm {
-                            ..new_state
-                        }
+                        starting_state.clone()
                     }
                 }
             }
