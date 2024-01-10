@@ -58,9 +58,63 @@ impl StateMachine for Atm {
     type Transition = Action;
 
     fn next_state(starting_state: &Self::State, t: &Self::Transition) -> Self::State {
-        todo!("Exercise 4")
+        match t {
+            Action::SwipeCard(hashed_pin) => Atm {
+                expected_pin_hash: Auth::Authenticating(*hashed_pin),
+                ..starting_state.clone()
+            },
+            Action::PressKey(key) => {
+                let mut new_state = starting_state.clone();
+                // match key {
+                //     Key::One | Key::Two | Key::Three | Key::Four => {
+                //         let mut new_state = starting_state.clone();
+                //         new_state.keystroke_register.push(key.into());
+                //      check pin
+                // return Atm {};
+                // }
+                // Key::Enter => {}
+                // }
+                match new_state.expected_pin_hash {
+                    Auth::Authenticating(expected_pin_hash) => {
+                        match key {
+                            Key::One | Key::Two | Key::Three | Key::Four => {
+                                new_state.keystroke_register.push(key.clone());
+                                new_state
+                            }
+                            Key::Enter => {
+                                let entered_pin_hash = crate::hash(&new_state.keystroke_register);
+                                if expected_pin_hash == entered_pin_hash {
+                                    Atm {
+                                        expected_pin_hash: Auth::Authenticated,
+                                        keystroke_register: vec![],
+                                        ..new_state
+                                    }
+                                } else {
+                                    Atm {
+                                        expected_pin_hash: Auth::Waiting,
+                                        keystroke_register: vec![],
+                                        ..new_state
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Auth::Authenticated => {
+                        Atm {
+                            ..new_state //todo
+                        }
+                    }
+                    Auth::Waiting => {
+                        Atm {
+                            ..new_state
+                        }
+                    }
+                }
+            }
+        }
     }
 }
+
 
 #[test]
 fn sm_3_simple_swipe_card() {
