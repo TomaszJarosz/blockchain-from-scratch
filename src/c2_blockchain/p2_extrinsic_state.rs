@@ -43,8 +43,10 @@ impl Header {
 	/// Create and return a valid child header.
 	fn child(&self, extrinsic: u64) -> Self {
 		Self {
-			height: self.height,
+			height: self.height + 1,
+			parent: hash(self),
 			extrinsic: extrinsic,
+			state: self.state + extrinsic,
 			..*self
 		}
 	}
@@ -80,7 +82,22 @@ impl Header {
 
 /// Build and return a valid chain with the given number of blocks.
 fn build_valid_chain(n: u64) -> Vec<Header> {
-	todo!("Exercise 4")
+	let mut chain = vec![];
+
+
+	let genesis_block = Header::genesis();
+	chain.push(genesis_block);
+
+	for height in 1..n {
+		let previous_block = &chain[(height - 1) as usize];
+		let current_block = Header {
+			parent: hash(previous_block),
+			height: height,
+			..*previous_block
+		};
+		chain.push(current_block)
+	}
+	chain
 }
 
 /// Build and return a chain with at least three headers.
