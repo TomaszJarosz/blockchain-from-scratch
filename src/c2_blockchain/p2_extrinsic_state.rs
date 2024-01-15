@@ -58,7 +58,21 @@ impl Header {
 	/// So in order for a block to verify, we must have that relationship between the extrinsic,
 	/// the previous state, and the current state.
 	fn verify_sub_chain(&self, chain: &[Header]) -> bool {
-		todo!("Exercise 3")
+		if chain.is_empty() { return false; }
+		let mut previous_hash = hash(self);
+		let mut previous_state = self.state;
+		let mut previous_height = self.height;
+
+		for header in chain {
+			if header.height != previous_height + 1 { return false; }
+			if header.parent != previous_hash { return false; }
+			if header.state != previous_state { return false; }
+
+			previous_hash = hash(header);
+			previous_state = header.state;
+			previous_height = header.height
+		}
+		true
 	}
 }
 
